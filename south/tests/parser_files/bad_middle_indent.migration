@@ -1,0 +1,2 @@
+create model Author
+    alter model Author

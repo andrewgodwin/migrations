@@ -74,8 +74,10 @@ class MigrationParser(object):
                     self.keyword_human = self.keywords[0]
                 # If there's no indentation, reset the context
                 if self.indent_level == 0:
-                    if self.context is not None and self.context.context_only:
-                        self.actions = self.actions[:-1] + self.context.actions
+                    if self.context is not None:
+                        self.context.final_check()
+                        if self.context.context_only:
+                            self.actions = self.actions[:-1] + self.context.actions
                     self.context = None
                 # If there's indentation without context, error
                 elif self.context is None:
@@ -91,9 +93,11 @@ class MigrationParser(object):
                     )
                 else:
                     handler()
-            # Expand last context if needed
-            if self.context is not None and self.context.context_only:
-                self.actions = self.actions[:-1] + self.context.actions
+            # Do sanity check, expand last context if needed
+            if self.context is not None:
+                self.context.final_check()
+                if self.context.context_only:
+                    self.actions = self.actions[:-1] + self.context.actions
 
     # Action shortcuts
 

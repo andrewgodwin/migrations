@@ -4,6 +4,9 @@ request. They are not themselves responsible for actually making
 any changes - they're just a representation.
 """
 
+from django.db.models import AutoField
+from .utils import parse_field_definition
+
 
 class Action(object):
     "Base class for actions"
@@ -12,6 +15,10 @@ class Action(object):
     # and is replaced by self.actions once parsing is complete.
     context_only = False
 
+    def final_check(self):
+        "Entrypoint for a final sanity check for context-type actions"
+        pass
+
 
 class CreateModel(Action):
     "Action for creating a new model"
@@ -19,11 +26,12 @@ class CreateModel(Action):
     def __init__(self, app_label, model_name):
         self.app_label = app_label
         self.model_name = model_name
-        self.fields = []
+        self.fields = [("id", AutoField(primary_key = True))]
         self.options = {}
 
     def set_field(self, name, definition):
-        self.fields.append((name, definition))
+        instance = parse_field_definition(definition)
+        self.fields.append((name, instance))
 
     def set_option(self, name, definition):
         self.options[name] = definition
@@ -34,6 +42,14 @@ class CreateModel(Action):
             self.model_name,
             ", ".join([n for n, d in self.fields]),
         )
+
+    def final_check(self):
+        has_pk = False
+        for name, instance in self.fields[1:]:
+            if instance.primary_key:
+                has_pk = True
+        if has_pk:
+            self.fields = self.fields[1:]
 
 
 class AlterModel(Action):
