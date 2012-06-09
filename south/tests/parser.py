@@ -1,6 +1,6 @@
 import os
 from django.utils import unittest
-from ..parser import MigrationParser
+from ..parser.migration import MigrationParser
 from ..actions import CreateModel, CreateField, AlterModelOption
 
 

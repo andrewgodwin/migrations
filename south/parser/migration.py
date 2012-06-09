@@ -1,5 +1,5 @@
 import functools
-from .actions import CreateModel, AlterModel
+from ..actions import CreateModel, AlterModel
 
 
 def no_context(func):
@@ -171,6 +171,11 @@ class MigrationParser(object):
     def handle_option(self):
         "'option' is allowed inside create or alter model."
         self.name_definition_action("set_option", "An 'option' keyword is only allowed inside 'create model' or 'alter model'.")
+
+    @needs_context
+    def handle_bases(self):
+        "'base' is allowed inside create or alter model."
+        self.name_definition_action("set_bases", "A 'bases' keyword is only allowed inside 'create model' or 'alter model'.")
 
     @needs_context
     def handle_create_field(self):

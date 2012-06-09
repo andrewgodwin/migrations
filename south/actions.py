@@ -5,7 +5,7 @@ any changes - they're just a representation.
 """
 
 from django.db.models import AutoField
-from .utils import parse_field_definition
+from .parser.option import parse_field_definition, parse_option_definition
 
 
 class Action(object):
@@ -28,13 +28,17 @@ class CreateModel(Action):
         self.model_name = model_name
         self.fields = [("id", AutoField(primary_key = True))]
         self.options = {}
+        self.bases = []
 
     def set_field(self, name, definition):
         instance = parse_field_definition(definition)
         self.fields.append((name, instance))
 
     def set_option(self, name, definition):
-        self.options[name] = definition
+        self.options[name] = parse_option_definition(definition)
+
+    def set_bases(self, definition):
+        self.bases = definition
 
     def __repr__(self):
         return "<CreateModel %s.%s (%s)>" % (
@@ -70,6 +74,13 @@ class AlterModel(Action):
             definition,
         ))
 
+    def set_bases(self, definition):
+        self.actions.append(AlterModelBases(
+            self.app_label,
+            self.model_name,
+            definition,
+        ))
+
     def create_field(self, name, definition):
         self.actions.append(CreateField(
             self.app_label,
@@ -99,13 +110,29 @@ class AlterModelOption(Action):
         self.app_label = app_label
         self.model_name = model_name
         self.name = name
-        self.definition = definition
+        self.definition = parse_option_definition(definition)
 
     def __repr__(self):
         return "<AlterModelOption %s.%s %s=%s>" % (
             self.app_label,
             self.model_name,
             self.name,
+            self.definition,
+        )
+
+
+class AlterModelBases(Action):
+    "Represents a change to a model's bases"
+
+    def __init__(self, app_label, model_name, definition):
+        self.app_label = app_label
+        self.model_name = model_name
+        self.definition = definition
+
+    def __repr__(self):
+        return "<AlterModelBases %s.%s %s>" % (
+            self.app_label,
+            self.model_name,
             self.definition,
         )
 

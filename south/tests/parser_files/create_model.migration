@@ -2,3 +2,4 @@ create model Author
     field name django.CharField(max_length=100)
     field dob django.DateTimeField(blank=True, null=True)
     option verbose_name "Book Author"
+    bases auth.User
