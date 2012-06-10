@@ -44,10 +44,16 @@ def _dfs(start, get_children, path):
         raise CircularDependency(path[path.index(start):] + [start])
     path.append(start)
     yield start
-    children = sorted(get_children(start), key=lambda x: str(x))
+    try:
+        children = sorted(get_children(start), key=lambda x: str(x))
+    except AttributeError:
+        # Print this else it'll get masked by flatten()
+        import traceback
+        traceback.print_exc()
+        raise
     if children:
         # We need to apply all the migrations this one depends on
-            yield (_dfs(n, get_children, path) for n in children)
+        yield (_dfs(n, get_children, path) for n in children)
     path.pop()
 
 

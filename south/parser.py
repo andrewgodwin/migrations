@@ -58,12 +58,17 @@ class MigrationParser(object):
         # Go through the file line-by-line
         with open(self.path) as fh:
             for i, line in enumerate(fh):
-                # Convert any tabs to 8 spaces, and warn
+                # Convert any tabs to 8 spaces
                 line = line.replace("\t", " " * 8)
+                # Remove any comments
+                line = line.split("#")[0]
                 # Detect the amount of indentation, then grab keywords
                 self.indent_level = len(line) - len(line.lstrip(" "))
-                self.keywords = line.split()
+                self.keywords = line.strip().split()
                 self.line_number = i + 1
+                # If it's an empty or comment line, ignore it
+                if not self.keywords:
+                    continue
                 # If the keyword is "create" or "delete", combine with the
                 # next token to form a single new keyword
                 if self.keywords[0] in ["create", "delete", "alter"]:
@@ -153,6 +158,15 @@ class MigrationParser(object):
             getattr(self.context, method_name)(definition)
         except AttributeError:
             raise self.syntax_error(error)
+
+    @no_context
+    def handle_depend(self):
+        "The depend keyword specifies a dependency"
+        # Ensure it's somewhat correct
+        if len(self.keywords) != 3:
+            raise self.syntax_error("Expecting 'depends app_label 1234_migrationname'")
+        # Add that information into our depends list
+        self.dependencies.append(tuple(self.keywords[1:]))
 
     @no_context
     def handle_create_model(self):

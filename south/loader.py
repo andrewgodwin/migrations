@@ -1,7 +1,9 @@
 import os
 from django.conf import settings
 from django.utils import importlib
-from .migration import Migration
+from .migration import Migration, RootMigration
+from .dependencies import depends
+from .exceptions import NonexistentDependency, InvalidDependency
 
 
 class Loader(object):
@@ -14,6 +16,8 @@ class Loader(object):
         "Constructor. Apps should be a map of {app label: migs dir}"
         self.apps = apps
         self.migrations = {}
+        self.dependencies = {}
+        self.reverse_dependencies = {}
 
     @classmethod
     def from_settings(cls):
@@ -34,19 +38,91 @@ class Loader(object):
 
     def load_all(self):
         "Loads all migrations of all enabled apps"
-        for app_label in self.apps:
+        for app_label in sorted(self.apps.keys()):
             self.load_app(app_label)
 
     def load_app(self, app_label):
         "Loads all migrations of the specified app"
-        self.migrations[app_label] = {}
+        self.migrations[app_label] = {"0000_root": RootMigration(app_label)}
         # Read in all the migrations by name
         for filename in os.listdir(self.apps[app_label]):
             path = os.path.join(self.apps[app_label], filename)
             if filename.endswith(".migration"):
                 # Alright, load it
                 name = filename[:-10]
-                migration = Migration(app_label, name, path)
-                migration.load()
+                migration = Migration(app_label, name)
+                migration.load(path)
                 self.migrations[app_label][name] = migration
 
+    def calculate_dependencies(self):
+        "Calculates and stores the dependency links"
+        for app_label, migrations in self.migrations.items():
+            migrations = migrations.values()
+            migrations.sort(key=lambda m: m.name)
+            for i, migration in enumerate(migrations):
+                # Initialise our entries
+                self.dependencies.setdefault(migration, [])
+                self.reverse_dependencies.setdefault(migration, [])
+                # If we're not the first, add a dep link backwards
+                if i > 0:
+                    self.dependencies[migration].append(migrations[i - 1])
+                # If we're not the last, add a reverse dep link forwards
+                if i < len(migrations) - 1:
+                    self.reverse_dependencies[migration].append(migrations[i + 1])
+                # For each dependency entry, add the right links
+                for dep_tuple in migration.dependencies:
+                    if dep_tuple[0] == app_label:
+                        raise InvalidDependency("Migration %s depends on something in its own app: %s" % (
+                            migration,
+                            "%s:%s" % dep_tuple,
+                        ))
+                    try:
+                        dependency = self.migrations[dep_tuple[0]][dep_tuple[1]]
+                    except KeyError:
+                        raise NonexistentDependency("Migration %s depends on non-existent %s" % (
+                            migration,
+                            "%s:%s" % dep_tuple,
+                        ))
+                    self.reverse_dependencies.setdefault(dependency, [])
+                    self.dependencies[migration].append(dependency)
+                    self.reverse_dependencies[dependency].append(migration)
+
+    def get_forward_dependencies(self, migration):
+        return self.dependencies.get(migration, [])
+
+    def get_backwards_dependencies(self, migration):
+        return self.reverse_dependencies.get(migration, [])
+
+    def plan(self, targets, applied):
+        """
+        Takes a set of target Migration id tuples and returns a plan for them.
+        Also needs a set of already-applied migrations, to which the root migrations
+        will be added.
+        """
+        applied = set(applied)
+        for app_label in self.migrations:
+            applied.add(RootMigration(app_label))
+        # Plan!
+        plan = []
+        for target in targets:
+            forwards = target not in applied
+            if forwards:
+                # Go through a forwards plan and add anything missing
+                for entry in depends(target, self.get_forward_dependencies):
+                    if entry not in applied:
+                        plan.append((True, entry))
+                        applied.add(entry)
+            else:
+                # Work out if there's another migration ahead of us in the app.
+                # If so, this is a backwards migration ending with removing that.
+                backwards_target = None
+                for dependent in self.get_backwards_dependencies(target):
+                    if dependent.app_label == target.app_label:
+                        backwards_target = dependent
+                # Go through a backwards plan and remove anything we need to
+                if backwards_target:
+                    for entry in depends(backwards_target, self.get_backwards_dependencies):
+                        if entry in applied:
+                            plan.append((False, entry))
+                            applied.remove(entry)
+        return plan

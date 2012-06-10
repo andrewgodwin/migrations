@@ -1,10 +1,11 @@
 """
 Actions are used to model the set of operations which migrations
-request. They are not themselves responsible for actually making
-any changes - they're just a representation.
+request, and are responsible for changing AppState / emitting database
+operations
 """
 
 from django.db.models import AutoField
+from .state import ModelState
 
 
 class Action(object):
@@ -18,6 +19,13 @@ class Action(object):
         "Entrypoint for a final sanity check for context-type actions"
         pass
 
+    def alter_state(self, app_state):
+        "Mutates the app_state with the changes this Action represents"
+        raise NotImplementedError()
+
+    def alter_db(self, direction):
+        raise NotImplementedError()
+
 
 class CreateModel(Action):
     "Action for creating a new model"
@@ -29,6 +37,15 @@ class CreateModel(Action):
         self.options = {}
         self.bases = []
 
+    def __repr__(self):
+        return "<CreateModel %s.%s (%s)>" % (
+            self.app_label,
+            self.model_name,
+            ", ".join([n for n, d in self.fields]),
+        )
+
+    # Called by the parser as it encounters inner statements
+
     def set_field(self, name, instance):
         self.fields.append((name, instance))
 
@@ -38,20 +55,28 @@ class CreateModel(Action):
     def set_bases(self, value):
         self.bases = value
 
-    def __repr__(self):
-        return "<CreateModel %s.%s (%s)>" % (
-            self.app_label,
-            self.model_name,
-            ", ".join([n for n, d in self.fields]),
-        )
+    # Final parsing check - keeps implicit ID if needed
 
     def final_check(self):
+        "Entrypoint for a final sanity check for context-type actions"
         has_pk = False
         for name, instance in self.fields[1:]:
             if instance.primary_key:
                 has_pk = True
         if has_pk:
             self.fields = self.fields[1:]
+
+    # State mutation
+
+    def alter_state(self, app_state):
+        "Alters the AppState"
+        app_state.models[self.model_name] = ModelState(
+            app_state = app_state,
+            name = self.model_name,
+            fields = self.fields,
+            options = self.options,
+            bases = self.bases,
+        )
 
 
 class AlterModel(Action):
