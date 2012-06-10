@@ -1,5 +1,8 @@
+import re
 import functools
-from ..actions import CreateModel, AlterModel
+from django.utils import importlib
+from .utils import datetime_utils
+from .actions import CreateModel, AlterModel
 
 
 def no_context(func):
@@ -51,6 +54,7 @@ class MigrationParser(object):
         self.context = None
         self.last_indent_level = 0
         self.actions = []
+        self.dependencies = []
         # Go through the file line-by-line
         with open(self.path) as fh:
             for i, line in enumerate(fh):
@@ -115,7 +119,7 @@ class MigrationParser(object):
         except AttributeError:
             raise self.syntax_error(error)
 
-    def name_definition_action(self, method_name, error):
+    def name_definition_action(self, method_name, error, definition_cast=None):
         """
         Shortcut for lines which have a name and definition
         and then call a method on the context, with an error if that
@@ -123,8 +127,24 @@ class MigrationParser(object):
         """
         name = self.keywords[1]
         definition = " ".join(self.keywords[2:])
+        if definition_cast:
+            definition = definition_cast(definition)
         try:
             getattr(self.context, method_name)(name, definition)
+        except AttributeError:
+            raise self.syntax_error(error)
+
+    def definition_action(self, method_name, error, definition_cast=None):
+        """
+        Shortcut for lines which have just a definition
+        and then call a method on the context, with an error if that
+        fails.
+        """
+        definition = " ".join(self.keywords[1:])
+        if definition_cast:
+            definition = definition_cast(definition)
+        try:
+            getattr(self.context, method_name)(definition)
         except AttributeError:
             raise self.syntax_error(error)
 
@@ -165,24 +185,90 @@ class MigrationParser(object):
     @needs_context
     def handle_field(self):
         "The 'field' keyword (for declaring fields inside create model)"
-        self.name_definition_action("set_field", "A 'field' keyword is only allowed inside 'create model'.")
+        self.name_definition_action(
+            "set_field",
+            "A 'field' keyword is only allowed inside 'create model'.",
+            parse_field_definition,
+        )
 
     @needs_context
     def handle_option(self):
         "'option' is allowed inside create or alter model."
-        self.name_definition_action("set_option", "An 'option' keyword is only allowed inside 'create model' or 'alter model'.")
+        self.name_definition_action(
+            "set_option",
+            "An 'option' keyword is only allowed inside 'create model' or 'alter model'.",
+            parse_option_definition,
+        )
 
     @needs_context
     def handle_bases(self):
         "'base' is allowed inside create or alter model."
-        self.name_definition_action("set_bases", "A 'bases' keyword is only allowed inside 'create model' or 'alter model'.")
+        self.definition_action(
+            "set_bases",
+            "A 'bases' keyword is only allowed inside 'create model' or 'alter model'.",
+            parse_bases_definition,
+        )
 
     @needs_context
     def handle_create_field(self):
         "'create field' is allowed inside alter model only."
-        self.name_definition_action("create_field", "A 'create field' keyword is only allowed inside 'alter model'.")
+        self.name_definition_action(
+            "create_field",
+            "A 'create field' keyword is only allowed inside 'alter model'.",
+            parse_field_definition,
+        )
 
     @needs_context
     def handle_delete_field(self):
         "'delete field' is allowed inside alter model only."
-        self.name_action("delete_field", "A 'delete field' keyword is only allowed inside 'alter model'.")
+        self.name_action(
+            "delete_field",
+            "A 'delete field' keyword is only allowed inside 'alter model'.",
+        )
+
+
+def definition_locals():
+    "Returns common locals() for definition evaluation"
+    return {
+        '_': lambda x: x,
+        'datetime': datetime_utils,
+    }
+
+
+def parse_field_definition(definition):
+    """
+    Given a field definition in the format appname.ClassName or
+    full.module.path.ClassName, resolves into a field instance.
+    """
+    # First, split by brackets
+    match = re.match(r"([\d\w\._]+)\(([^\)]+)\)", definition)
+    if not match:
+        raise ValueError("%s is not a valid field definition" % definition)
+    path, args = match.groups()
+    # Next, resolve that path
+    bits = path.split(".")
+    if len(bits) == 2:
+        if bits[0] == "django":
+            path = "django.db.models.%s" % bits[-1]
+    if "." not in path:
+        raise ValueError("Invalid field class '%s'" % path)
+    module_path, class_name = path.rsplit(".", 1)
+    # Import the class and instantiate it
+    module = importlib.import_module(module_path)
+    klass = getattr(module, class_name)
+    fake_locals = definition_locals()
+    fake_locals[class_name] = klass
+    instance = eval("%s(%s)" % (class_name, args), {}, fake_locals)
+    return instance
+
+
+def parse_option_definition(definition):
+    "Given an option definition (an expression), returns the Python object"
+    fake_locals = definition_locals()
+    return eval(definition, {}, fake_locals)
+
+
+def parse_bases_definition(definition):
+    "Given a bases definition (an expression), returns the Python objects"
+    bases = [x.strip() for x in definition.split(",")]
+    return bases

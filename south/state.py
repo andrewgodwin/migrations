@@ -3,6 +3,8 @@ Contains classes which model the state of an app's models.
 Not called models.py for obvious reasons.
 """
 
+from django.db import models
+
 
 class ModelState(object):
     """
@@ -31,21 +33,19 @@ class ModelState(object):
     def render(self):
         "Returns a Model object created from our current state"
         # First, make a Meta object
-        meta_contents = {'app_label': app}
+        meta_contents = {'app_label': self.app_label}
         meta_contents.update(self.options)
-        for key, code in data.items():
-            # Some things we never want to use.
-            if key in ["_bases", "_ormbases"]:
-                continue
-            # Some things we don't want with stubs.
-            if stub and key in ["order_with_respect_to"]:
-                continue
-            # OK, add it.
-            try:
-                results[key] = self.eval_in_context(code, app)
-            except (NameError, AttributeError), e:
-                raise ValueError("Cannot successfully create meta field '%s' for model '%s.%s': %s." % (
-                    key, app, model, e
-                ))
-        return type("Meta", tuple(), results) 
-    
+        meta = type("Meta", tuple(), meta_contents)
+        # Then, work out our bases
+        # TODO: Use the actual bases
+        bases = [models.Model]
+        # Turn fields into a dict for the body, add other bits
+        body = dict(self.fields)
+        body['Meta'] = meta
+        body['__module__'] = "__fake__"
+        # Then, make a Model object
+        return type(
+            self.name,
+            tuple(bases),
+            body,
+        )

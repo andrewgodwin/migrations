@@ -1,0 +1,2 @@
+create model Book
+    field title django.db.models.fields.CharField(max_length=200)

@@ -1,0 +1,2 @@
+create model Author
+    field name django.db.models.fields.CharField(max_length=100)

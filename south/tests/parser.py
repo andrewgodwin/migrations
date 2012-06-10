@@ -1,6 +1,6 @@
 import os
 from django.utils import unittest
-from ..parser.migration import MigrationParser
+from ..parser import MigrationParser
 from ..actions import CreateModel, CreateField, AlterModelOption
 
 
@@ -59,3 +59,8 @@ class ParserTests(unittest.TestCase):
             SyntaxError,
             parser.parse,
         )
+
+    def test_model_bases(self):
+        parser = self.get_parser("model_bases.migration")
+        parser.parse()
+        self.assertEqual(parser.actions[0].bases, ["auth.User", "south.tests.compiler.TestBase"])

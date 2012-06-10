@@ -1,0 +1,2 @@
+alter model Author
+    create field yob django.db.models.fields.IntegerField()

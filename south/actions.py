@@ -5,7 +5,6 @@ any changes - they're just a representation.
 """
 
 from django.db.models import AutoField
-from .parser.option import parse_field_definition, parse_option_definition
 
 
 class Action(object):
@@ -30,15 +29,14 @@ class CreateModel(Action):
         self.options = {}
         self.bases = []
 
-    def set_field(self, name, definition):
-        instance = parse_field_definition(definition)
+    def set_field(self, name, instance):
         self.fields.append((name, instance))
 
-    def set_option(self, name, definition):
-        self.options[name] = parse_option_definition(definition)
+    def set_option(self, name, value):
+        self.options[name] = value
 
-    def set_bases(self, definition):
-        self.bases = definition
+    def set_bases(self, value):
+        self.bases = value
 
     def __repr__(self):
         return "<CreateModel %s.%s (%s)>" % (
@@ -66,27 +64,27 @@ class AlterModel(Action):
         self.model_name = model_name
         self.actions = []
 
-    def set_option(self, name, definition):
+    def set_option(self, name, value):
         self.actions.append(AlterModelOption(
             self.app_label,
             self.model_name,
             name,
-            definition,
+            value,
         ))
 
-    def set_bases(self, definition):
+    def set_bases(self, value):
         self.actions.append(AlterModelBases(
             self.app_label,
             self.model_name,
-            definition,
+            value,
         ))
 
-    def create_field(self, name, definition):
+    def create_field(self, name, instance):
         self.actions.append(CreateField(
             self.app_label,
             self.model_name,
             name,
-            definition,
+            instance,
         ))
 
     def delete_field(self, name):
@@ -106,45 +104,45 @@ class AlterModel(Action):
 class AlterModelOption(Action):
     "Represents a change to a model option"
 
-    def __init__(self, app_label, model_name, name, definition):
+    def __init__(self, app_label, model_name, name, value):
         self.app_label = app_label
         self.model_name = model_name
         self.name = name
-        self.definition = parse_option_definition(definition)
+        self.value = value
 
     def __repr__(self):
         return "<AlterModelOption %s.%s %s=%s>" % (
             self.app_label,
             self.model_name,
             self.name,
-            self.definition,
+            self.value,
         )
 
 
 class AlterModelBases(Action):
     "Represents a change to a model's bases"
 
-    def __init__(self, app_label, model_name, definition):
+    def __init__(self, app_label, model_name, value):
         self.app_label = app_label
         self.model_name = model_name
-        self.definition = definition
+        self.value = value
 
     def __repr__(self):
         return "<AlterModelBases %s.%s %s>" % (
             self.app_label,
             self.model_name,
-            self.definition,
+            self.value,
         )
 
 
 class CreateField(Action):
     "Represents a field being added to an existing model"
 
-    def __init__(self, app_label, model_name, name, definition):
+    def __init__(self, app_label, model_name, name, instance):
         self.app_label = app_label
         self.model_name = model_name
         self.name = name
-        self.definition = definition
+        self.instance = instance
 
     def __repr__(self):
         return "<CreateField %s.%s %s>" % (
