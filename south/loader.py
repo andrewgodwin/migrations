@@ -163,20 +163,28 @@ class Loader(object):
                             applied.remove(entry)
         return plan
 
-    def state(self, migration):
+    def action_states(self, migration, forwards=True):
         """
-        Given a migration, returns a state.ProjectState representing the
-        models of the project needed for this migration (for things like
-        ForeignKeys, __bases__, Python code blocks, etc.)
+        Given a migration, returns a pair of ProjectStates for each action -
+        the "from" and "to" states.
         """
         # Use the planner to work out the migrations we need to consider
-        plan = self.plan([migration], [])
-        # Step through and build up a ProjectState
+        plan = self.plan([migration], [])[:-1]
+        # Step through and build up a base ProjectState
         project_state = ProjectState()
-        for forwards, migration in plan:
+        for forwards, plan_migration in plan:
             if not forwards:
                 raise ValueError("State migration plan contains backwards migration.")
-            for action in migration.actions:
+            for action in plan_migration.actions:
                 action.alter_state(project_state)
+        # Now build the per-action states
+        result = []
+        for action in migration.actions:
+            from_state = project_state.copy()
+            action.alter_state(project_state)
+            result.append((action, from_state, project_state.copy()))
+        # If this is a backwards migration, reverse it all
+        if not forwards:
+            result = [(a, t, f) for (a, f, t) in reversed(result)]
         # Return it
-        return project_state
+        return result

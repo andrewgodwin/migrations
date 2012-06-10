@@ -5,26 +5,9 @@ operations
 """
 
 from django.db.models import AutoField
-from .state import ModelState
-
-
-class Action(object):
-    "Base class for actions"
-
-    # If this is True, the action only exists temporarily for parsing
-    # and is replaced by self.actions once parsing is complete.
-    context_only = False
-
-    def final_check(self):
-        "Entrypoint for a final sanity check for context-type actions"
-        pass
-
-    def alter_state(self, project_state):
-        "Mutates the project_state with the changes this Action represents"
-        raise NotImplementedError()
-
-    def alter_db(self, direction):
-        raise NotImplementedError()
+from ..state import ModelState
+from .base import Action
+from .fields import CreateField, DeleteField
 
 
 class CreateModel(Action):
@@ -78,6 +61,13 @@ class CreateModel(Action):
             options = self.options,
             bases = self.bases,
         )
+
+    def alter_database(self, from_state, to_state, database, forwards):
+        "Creates the model"
+        if forwards:
+            print "CALLING 'CREATE TABLE' with %s" % to_state.models[self.app_label, self.model_name]
+        else:
+            print "CALLING 'DROP TABLE' with %s" % to_state.models[self.app_label, self.model_name]
 
 
 class DeleteModel(Action):
@@ -181,51 +171,3 @@ class AlterModelBases(Action):
     def alter_state(self, project_state):
         "Alters the project state"
         project_state.models[(self.app_label, self.model_name)].bases = self.value
-
-
-class CreateField(Action):
-    "Represents a field being added to an existing model"
-
-    def __init__(self, app_label, model_name, name, instance):
-        self.app_label = app_label
-        self.model_name = model_name
-        self.name = name
-        self.instance = instance
-
-    def __repr__(self):
-        return "<CreateField %s.%s %s>" % (
-            self.app_label,
-            self.model_name,
-            self.name,
-        )
-
-    def alter_state(self, project_state):
-        "Alters the project state"
-        project_state.models[(self.app_label, self.model_name)].fields.append(
-            (self.name, self.instance),
-        )
-
-
-class DeleteField(Action):
-    "Represents a field being removed from an existing model"
-
-    def __init__(self, app_label, model_name, name):
-        self.app_label = app_label
-        self.model_name = model_name
-        self.name = name
-
-    def __repr__(self):
-        return "<DeleteField %s.%s %s>" % (
-            self.app_label,
-            self.model_name,
-            self.name,
-        )
-
-    def alter_state(self, project_state):
-        "Alters the project state"
-        model_state = project_state.models[(self.app_label, self.model_name)]
-        model_state.fields = [
-            (name, field)
-            for name, field in model_state.fields
-            if name != self.name
-        ]

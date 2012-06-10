@@ -231,25 +231,25 @@ class LoaderTests(unittest.TestCase):
         )
 
     def test_state_empty(self):
-        "Tests that state() of a root migration is empty"
+        "Tests that the first state of the first migration is empty"
         loader = self.get_test_loader()
-        state = loader.state(loader.get_migration("app1", "0000_root"))
-        self.assertEqual(state.models, {})
+        action_states = loader.action_states(loader.get_migration("app1", "0001_initial"))
+        self.assertEqual(action_states[0][1].models, {})
 
     def test_state_full(self):
         "Tests that state() of app1 is correct after both migrations"
         loader = self.get_test_loader()
-        state = loader.state(loader.get_migration("app1", "0002_yob"))
-        # Make sure the models are there from both apps (because of dependency)
+        action_states = loader.action_states(loader.get_migration("app1", "0002_yob"))
+        # Make sure the models are there from both apps at the start (because of dependency)
         self.assertListEqual(
-            state.models.keys(),
+            action_states[0][1].models.keys(),
             [
                 ("app1", "Author"),
                 ("app2", "Book"),
             ],
         )
-        # Make sure Author has the right fields
+        # Make sure Author has the right fields at the end
         self.assertListEqual(
-            [x for x, y in state.models["app1", "Author"].fields],
+            [x for x, y in action_states[-1][2].models["app1", "Author"].fields],
             ["id", "name", "yob"],
         )

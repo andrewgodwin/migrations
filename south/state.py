@@ -18,7 +18,7 @@ class ProjectState(object):
 
     def copy(self):
         ps = ProjectState(
-            apps = dict((k, v.copy()) for k, v in self.models.items())
+            models = dict((k, v.copy()) for k, v in self.models.items())
         )
         for model in ps.models.values():
             model.project_state = ps
