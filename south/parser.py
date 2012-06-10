@@ -128,7 +128,10 @@ class MigrationParser(object):
         name = self.keywords[1]
         definition = " ".join(self.keywords[2:])
         if definition_cast:
-            definition = definition_cast(definition)
+            try:
+                definition = definition_cast(definition)
+            except Exception, e:
+                raise self.syntax_error(str(e))
         try:
             getattr(self.context, method_name)(name, definition)
         except AttributeError:
@@ -142,7 +145,10 @@ class MigrationParser(object):
         """
         definition = " ".join(self.keywords[1:])
         if definition_cast:
-            definition = definition_cast(definition)
+            try:
+                definition = definition_cast(definition)
+            except Exception, e:
+                raise self.syntax_error(str(e))
         try:
             getattr(self.context, method_name)(definition)
         except AttributeError:
@@ -241,7 +247,7 @@ def parse_field_definition(definition):
     full.module.path.ClassName, resolves into a field instance.
     """
     # First, split by brackets
-    match = re.match(r"([\d\w\._]+)\(([^\)]+)\)", definition)
+    match = re.match(r"([\d\w\._]+)\(([^\)]*)\)", definition)
     if not match:
         raise ValueError("%s is not a valid field definition" % definition)
     path, args = match.groups()

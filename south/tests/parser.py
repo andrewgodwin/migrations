@@ -15,6 +15,13 @@ class ParserTests(unittest.TestCase):
         "Assembles a parser for the test file 'filename'"
         return MigrationParser("fake_app", os.path.join(self.files_root, filename))
 
+    def test_bad_field_class(self):
+        parser = self.get_parser("bad_field_class.migration")
+        self.assertRaises(
+            SyntaxError,
+            parser.parse,
+        )
+
     def test_create_model(self):
         # First, test we get an implicit ID field
         parser = self.get_parser("create_model.migration")
