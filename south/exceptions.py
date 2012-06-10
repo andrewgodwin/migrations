@@ -31,3 +31,13 @@ class CircularDependency(MigrationError):
 class NonexistentMigration(MigrationError):
     "Raised when a migration file cannot be found"
     pass
+
+
+class AmbiguousMigration(MigrationError):
+    "Raised when a migration prefix matches multiple things"
+    pass
+
+
+class UnmigratedApp(MigrationError):
+    "Raised when a migration operation is peformed on an app without them"
+    pass

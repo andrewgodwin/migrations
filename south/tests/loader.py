@@ -2,6 +2,7 @@ import os
 from django.utils import unittest
 from ..loader import Loader
 from ..migration import Migration
+from ..exceptions import AmbiguousMigration, NonexistentMigration, UnmigratedApp
 
 
 class LoaderTests(unittest.TestCase):
@@ -67,6 +68,51 @@ class LoaderTests(unittest.TestCase):
         self.assertEqual(
             loader.reverse_dependencies[Migration("app1", "0002_yob")],
             [],
+        )
+
+    def test_get(self):
+        "Tests get_migration and get_migration_by_prefix"
+        loader = self.get_test_loader()
+        self.assertEqual(loader.get_migration("app1", "0002_yob"), Migration("app1", "0002_yob"))
+        self.assertEqual(
+            loader.get_migration_by_prefix("app1", "0002"),
+            loader.get_migration("app1", "0002_yob"),
+        )
+        self.assertRaises(
+            AmbiguousMigration,
+            loader.get_migration_by_prefix, "app1", "000",
+        )
+        self.assertRaises(
+            NonexistentMigration,
+            loader.get_migration_by_prefix, "app1", "0003",
+        )
+        self.assertRaises(
+            NonexistentMigration,
+            loader.get_migration, "app1", "0002",
+        )
+        self.assertRaises(
+            UnmigratedApp,
+            loader.get_migration, "app3", "0001",
+        )
+        self.assertRaises(
+            UnmigratedApp,
+            loader.get_migration_by_prefix, "app3", "0001",
+        )
+
+    def test_get_top(self):
+        "Tests get_top_migration"
+        loader = self.get_test_loader()
+        self.assertEqual(
+            loader.get_top_migration("app1"),
+            loader.get_migration("app1", "0002_yob"),
+        )
+        self.assertEqual(
+            loader.get_top_migration("app2"),
+            loader.get_migration("app2", "0001_initial"),
+        )
+        self.assertRaises(
+            UnmigratedApp,
+            loader.get_top_migration, "app3",
         )
 
     def test_plan_onedep(self):

@@ -3,7 +3,7 @@ from django.conf import settings
 from django.utils import importlib
 from .migration import Migration, RootMigration
 from .dependencies import depends
-from .exceptions import NonexistentDependency, InvalidDependency, NonexistentMigration
+from .exceptions import NonexistentDependency, InvalidDependency, NonexistentMigration, AmbiguousMigration, UnmigratedApp
 from .state import ProjectState
 
 
@@ -32,7 +32,7 @@ class Loader(object):
             # Work out migration path and see if it exists
             module = importlib.import_module(app)
             mig_path = os.path.join(os.path.dirname(module.__file__), "migrations")
-            if os.path.is_dir(mig_path):
+            if os.path.isdir(mig_path):
                 result[app_label] = mig_path
         # Construct the class
         return cls(result)
@@ -89,10 +89,38 @@ class Loader(object):
                     self.reverse_dependencies[dependency].append(migration)
 
     def get_migration(self, app_label, name):
+        "Returns a Migration class with loaded actions by name"
+        if app_label not in self.migrations:
+            raise UnmigratedApp("App %s does not have migrations." % app_label)
         try:
             return self.migrations[app_label][name]
         except KeyError:
             raise NonexistentMigration("No loaded migration matches %s:%s" % (app_label, name))
+
+    def get_migration_by_prefix(self, app_label, prefix):
+        "Given an app label and prefix of a migration name, either returns one or errors"
+        if app_label not in self.migrations:
+            raise UnmigratedApp("App %s does not have migrations." % app_label)
+        matches = []
+        for name in self.migrations[app_label]:
+            if name.startswith(prefix):
+                matches.append(name)
+        if not matches:
+            raise NonexistentMigration("No loaded migration match the prefix %s:%s" % (app_label, name))
+        elif len(matches) > 1:
+            raise AmbiguousMigration("Multiple migrations match the prefix %s:%s (%s)" % (
+                app_label,
+                name,
+                ", ".join(matches),
+            ))
+        else:
+            return self.get_migration(app_label, matches[0])
+
+    def get_top_migration(self, app_label):
+        "Returns the most recent migration for app_label"
+        if app_label not in self.migrations:
+            raise UnmigratedApp("App %s does not have migrations." % app_label)
+        return sorted(self.migrations[app_label].items())[-1][1]
 
     def get_forward_dependencies(self, migration):
         return self.dependencies.get(migration, [])
