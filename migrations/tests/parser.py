@@ -70,4 +70,4 @@ class ParserTests(unittest.TestCase):
     def test_model_bases(self):
         parser = self.get_parser("model_bases.migration")
         parser.parse()
-        self.assertEqual(parser.actions[0].bases, ["auth.User", "south.tests.compiler.TestBase"])
+        self.assertEqual(parser.actions[0].bases, ["auth.User", "migrations.tests.compiler.TestBase"])

@@ -1,6 +1,5 @@
 from datetime import *
 
-import django
 from django.conf import settings
 from django.utils import timezone
 from datetime import datetime as _datetime
@@ -9,8 +8,7 @@ from datetime import datetime as _datetime
 class datetime(_datetime):
     """
     A custom datetime.datetime class which acts as a compatibility
-    layer between South and Django 1.4's timezone aware datetime
-    instances.
+    layer between migrations and Django installations.
 
     It basically adds the default timezone (as configured in Django's
     settings) automatically if no tzinfo is given.

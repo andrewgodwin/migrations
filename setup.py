@@ -8,15 +8,14 @@ try:
 except ImportError:
     from distutils.core import setup
 
-from south import __version__
-
+from migrations import __version__
 
 # Build packages list
 packages = []
 root_dir = os.path.dirname(__file__)
 if root_dir != '':
     os.chdir(root_dir)
-for dirpath, dirnames, filenames in os.walk('south2'):
+for dirpath, dirnames, filenames in os.walk('migrations'):
     # Ignore dirnames that start with '.'
     for i, dirname in enumerate(dirnames):
         if dirname.startswith('.'):
@@ -25,23 +24,11 @@ for dirpath, dirnames, filenames in os.walk('south2'):
         packages.append(dirpath.strip("/").replace("/", "."))
 
 setup(
-    name='South',
-    version=__version__,
-    description='South: Migrations for Django',
-    long_description='South is an intelligent database migrations library for the Django web framework. It is database-independent and DVCS-friendly, as well as a whole host of other features.',
-    author='Andrew Godwin',
-    author_email='south@aeracode.org',
-    url='http://south.aeracode.org/',
-    download_url='http://south.aeracode.org/wiki/Download',
-    classifiers=[
-        "Development Status :: 5 - Production/Stable",
-        "Framework :: Django",
-        "Intended Audience :: Developers",
-        "Intended Audience :: System Administrators",
-        "Intended Audience :: System Administrators",
-        "License :: OSI Approved :: Apache Software License",
-        "Operating System :: OS Independent",
-        "Topic :: Software Development"
-    ],
+    name = 'django.contrib.migrations',
+    version = __version__,
+    description = 'Django Migrations',
+    long_description = "Django's migration framework",
+    author = 'Andrew Godwin',
+    author_email = 'south@aeracode.org',
     packages = packages,
 )

@@ -1,4 +1,4 @@
 create model Author
     field dob django.db.models.fields.DateTimeField(blank=True, null=True)
     option verbose_name "Book Author"
-    bases auth.User, south.tests.compiler.TestBase
+    bases auth.User, migrations.tests.compiler.TestBase
