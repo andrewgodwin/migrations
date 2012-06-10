@@ -3,13 +3,14 @@ from django.conf import settings
 from django.utils import importlib
 from .migration import Migration, RootMigration
 from .dependencies import depends
-from .exceptions import NonexistentDependency, InvalidDependency
+from .exceptions import NonexistentDependency, InvalidDependency, NonexistentMigration
+from .state import ProjectState
 
 
 class Loader(object):
     """
     Responsible for scanning the filesystem for migrations, loading them in,
-    and dependency handling.
+    planning, state creation and dependency handling.
     """
 
     def __init__(self, apps):
@@ -87,6 +88,12 @@ class Loader(object):
                     self.dependencies[migration].append(dependency)
                     self.reverse_dependencies[dependency].append(migration)
 
+    def get_migration(self, app_label, name):
+        try:
+            return self.migrations[app_label][name]
+        except KeyError:
+            raise NonexistentMigration("No loaded migration matches %s:%s" % (app_label, name))
+
     def get_forward_dependencies(self, migration):
         return self.dependencies.get(migration, [])
 
@@ -98,6 +105,7 @@ class Loader(object):
         Takes a set of target Migration id tuples and returns a plan for them.
         Also needs a set of already-applied migrations, to which the root migrations
         will be added.
+        Returns a list of (forwards?, migration_instance).
         """
         applied = set(applied)
         for app_label in self.migrations:
@@ -126,3 +134,21 @@ class Loader(object):
                             plan.append((False, entry))
                             applied.remove(entry)
         return plan
+
+    def state(self, migration):
+        """
+        Given a migration, returns a state.ProjectState representing the
+        models of the project needed for this migration (for things like
+        ForeignKeys, __bases__, Python code blocks, etc.)
+        """
+        # Use the planner to work out the migrations we need to consider
+        plan = self.plan([migration], [])
+        # Step through and build up a ProjectState
+        project_state = ProjectState()
+        for forwards, migration in plan:
+            if not forwards:
+                raise ValueError("State migration plan contains backwards migration.")
+            for action in migration.actions:
+                action.alter_state(project_state)
+        # Return it
+        return project_state

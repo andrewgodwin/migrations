@@ -1,4 +1,5 @@
 create model Author
     field name django.db.models.fields.CharField(max_length=100)
     field dob django.db.models.fields.DateTimeField(blank=True, null=True)
+    field user django.db.models.fields.related.ForeignKey("auth.User")
     option verbose_name "Book Author"

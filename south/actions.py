@@ -19,8 +19,8 @@ class Action(object):
         "Entrypoint for a final sanity check for context-type actions"
         pass
 
-    def alter_state(self, app_state):
-        "Mutates the app_state with the changes this Action represents"
+    def alter_state(self, project_state):
+        "Mutates the project_state with the changes this Action represents"
         raise NotImplementedError()
 
     def alter_db(self, direction):
@@ -68,15 +68,28 @@ class CreateModel(Action):
 
     # State mutation
 
-    def alter_state(self, app_state):
-        "Alters the AppState"
-        app_state.models[self.model_name] = ModelState(
-            app_state = app_state,
+    def alter_state(self, project_state):
+        "Alters the project state"
+        project_state.models[(self.app_label, self.model_name)] = ModelState(
+            project_state = project_state,
+            app_label = self.app_label,
             name = self.model_name,
             fields = self.fields,
             options = self.options,
             bases = self.bases,
         )
+
+
+class DeleteModel(Action):
+    "Action for deleting a model"
+
+    def __init__(self, app_label, model_name):
+        self.app_label = app_label
+        self.model_name = model_name
+
+    def alter_state(self, project_state):
+        "Alters the project state"
+        del project_state.models[(self.app_label, self.model_name)]
 
 
 class AlterModel(Action):
@@ -88,6 +101,14 @@ class AlterModel(Action):
         self.app_label = app_label
         self.model_name = model_name
         self.actions = []
+
+    def __repr__(self):
+        return "<AlterModel %s.%s>" % (
+            self.app_label,
+            self.model_name,
+        )
+
+    # Called by the parser as it encounters inner statements
 
     def set_option(self, name, value):
         self.actions.append(AlterModelOption(
@@ -119,12 +140,6 @@ class AlterModel(Action):
             name,
         ))
 
-    def __repr__(self):
-        return "<AlterModel %s.%s>" % (
-            self.app_label,
-            self.model_name,
-        )
-
 
 class AlterModelOption(Action):
     "Represents a change to a model option"
@@ -143,6 +158,10 @@ class AlterModelOption(Action):
             self.value,
         )
 
+    def alter_state(self, project_state):
+        "Alters the project state"
+        project_state.models[(self.app_label, self.model_name)].options[self.name] = self.value
+
 
 class AlterModelBases(Action):
     "Represents a change to a model's bases"
@@ -158,6 +177,10 @@ class AlterModelBases(Action):
             self.model_name,
             self.value,
         )
+
+    def alter_state(self, project_state):
+        "Alters the project state"
+        project_state.models[(self.app_label, self.model_name)].bases = self.value
 
 
 class CreateField(Action):
@@ -176,6 +199,12 @@ class CreateField(Action):
             self.name,
         )
 
+    def alter_state(self, project_state):
+        "Alters the project state"
+        project_state.models[(self.app_label, self.model_name)].fields.append(
+            (self.name, self.instance),
+        )
+
 
 class DeleteField(Action):
     "Represents a field being removed from an existing model"
@@ -191,3 +220,12 @@ class DeleteField(Action):
             self.model_name,
             self.name,
         )
+
+    def alter_state(self, project_state):
+        "Alters the project state"
+        model_state = project_state.models[(self.app_label, self.model_name)]
+        model_state.fields = [
+            (name, field)
+            for name, field in model_state.fields
+            if name != self.name
+        ]

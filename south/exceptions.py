@@ -8,21 +8,26 @@ class IndentationError(ParsingError):
     pass
 
 
-class DependencyError(StandardError):
-    "General class for dependency errors"
+class MigrationError(StandardError):
+    "General class for migration errors"
     pass
 
 
-class InvalidDependency(DependencyError):
+class InvalidDependency(MigrationError):
     "Represents a dependency that does not exist"
     pass
 
 
-class NonexistentDependency(DependencyError):
+class NonexistentDependency(MigrationError):
     "Represents a dependency that does not exist"
     pass
 
 
-class CircularDependency(DependencyError):
+class CircularDependency(MigrationError):
     "Represents a circular dependency in migrations"
+    pass
+
+
+class NonexistentMigration(MigrationError):
+    "Raised when a migration file cannot be found"
     pass

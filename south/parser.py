@@ -2,7 +2,7 @@ import re
 import functools
 from django.utils import importlib
 from .utils import datetime_utils
-from .actions import CreateModel, AlterModel
+from .actions import CreateModel, AlterModel, DeleteModel
 
 
 def no_context(func):
@@ -174,14 +174,9 @@ class MigrationParser(object):
         # Make sure there's no junk at the end of the line
         if len(self.keywords) > 2:
             raise self.syntax_error("Unexpected content after model name")
-        # Work out if it's ModelName or appname.ModelName
-        name = self.keywords[1]
-        if "." in name:
-            app_label, name = name.split(".", 1)
-        else:
-            app_label = self.app_label
         # Create the action and assign as context
-        action = CreateModel(app_label, name)
+        name = self.keywords[1]
+        action = CreateModel(self.app_label, name)
         self.actions.append(action)
         self.context = action
 
@@ -191,14 +186,21 @@ class MigrationParser(object):
         # Make sure there's no junk at the end of the line
         if len(self.keywords) > 2:
             raise self.syntax_error("Unexpected content after model name")
-        # Work out if it's ModelName or appname.ModelName
-        name = self.keywords[1]
-        if "." in name:
-            app_label, name = name.split(".", 1)
-        else:
-            app_label = self.app_label
         # Create the action and assign as context
-        action = AlterModel(app_label, name)
+        name = self.keywords[1]
+        action = AlterModel(self.app_label, name)
+        self.actions.append(action)
+        self.context = action
+
+    @no_context
+    def handle_delete_model(self):
+        "Single-line command to delete a model"
+        # Make sure there's no junk at the end of the line
+        if len(self.keywords) > 2:
+            raise self.syntax_error("Unexpected content after model name")
+        # Create the action and assign as context
+        name = self.keywords[1]
+        action = DeleteModel(self.app_label, name)
         self.actions.append(action)
         self.context = action
 
