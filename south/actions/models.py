@@ -27,6 +27,9 @@ class CreateModel(Action):
             ", ".join([n for n, d in self.fields]),
         )
 
+    def __str__(self):
+        return "Create model %s.%s" % (self.app_label, self.model_name)
+
     # Called by the parser as it encounters inner statements
 
     def set_field(self, name, instance):
@@ -65,9 +68,9 @@ class CreateModel(Action):
     def alter_database(self, from_state, to_state, database, forwards):
         "Creates the model"
         if forwards:
-            print "CALLING 'CREATE TABLE' with %s" % to_state.models[self.app_label, self.model_name]
+            print "CALLING 'CREATE TABLE' with %s" % to_state.models[self.app_label, self.model_name].render()
         else:
-            print "CALLING 'DROP TABLE' with %s" % to_state.models[self.app_label, self.model_name]
+            print "CALLING 'DROP TABLE' with %s" % to_state.models[self.app_label, self.model_name].render()
 
 
 class DeleteModel(Action):

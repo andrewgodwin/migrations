@@ -23,11 +23,18 @@ class CreateField(Action):
             self.name,
         )
 
+    def __str__(self):
+        return "Create field %s on %s.%s" % (self.name, self.app_label, self.model_name)
+
     def alter_state(self, project_state):
         "Alters the project state"
         project_state.models[(self.app_label, self.model_name)].fields.append(
             (self.name, self.instance),
         )
+
+    def alter_database(self, from_state, to_state, database, forwards):
+        "Creates the field (column or table)"
+        pass
 
 
 class DeleteField(Action):
@@ -45,6 +52,9 @@ class DeleteField(Action):
             self.name,
         )
 
+    def __str__(self):
+        return "Delete field %s from %s.%s" % (self.name, self.app_label, self.model_name)
+
     def alter_state(self, project_state):
         "Alters the project state"
         model_state = project_state.models[(self.app_label, self.model_name)]
@@ -53,3 +63,7 @@ class DeleteField(Action):
             for name, field in model_state.fields
             if name != self.name
         ]
+
+    def alter_database(self, from_state, to_state, database, forwards):
+        "Creates the field (column or table)"
+        pass

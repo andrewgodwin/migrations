@@ -39,11 +39,24 @@ class PrettyMigrator(Migrator):
     Subclass of Migrator that nicely logs what's happening.
     """
 
+    colors = {
+        "blue": '\033[94m',
+        "green": '\033[92m',
+        "red": '\033[91m',
+        "end": '\033[0m',
+    }
+
+    def colored(self, string, name):
+        if sys.stdout.isatty():
+            return self.colors[name] + string + self.colors["end"]
+        else:
+            return string
+
     def log_migration_start(self, migration, forwards):
-        print "Running %s..." % migration
+        print self.colored("%s:" % migration, "blue")
 
     def log_migration_end(self, migration, forwards):
-        print "%s complete." % migration
+        print self.colored("%s complete." % migration, "green")
 
     def log_action_start(self, migration, action, forwards):
         print " -> %s" % action
