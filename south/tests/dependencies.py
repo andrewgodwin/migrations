@@ -1,4 +1,5 @@
 from django.utils import unittest
+from ..exceptions import CircularDependency
 from ..dependencies import depends, flatten
 
 
@@ -51,4 +52,20 @@ class DependencyTests(unittest.TestCase):
         self.assertEqual(
             depends(target, lambda x: links.get(x, [])),
             ['c1', 'c2', 'b1', 'a1', 'b2', 'a3', 'b3'],
+        )
+
+    def test_circular(self):
+        "Circular dependency test"
+        target = "b3"
+        links = {
+            "b3": ["a3", "b2", "c2"],
+            "b2": ["a1", "b1"],
+            "a3": ["a1", "b2", "c3"],
+            "a2": ["a1"],
+            "c3": ["b3", "c2"],
+            "c2": ["c1"],
+        }
+        self.assertRaises(
+            CircularDependency,
+            depends, target, lambda x: links.get(x, []),
         )
