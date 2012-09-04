@@ -48,9 +48,9 @@ class Loader(object):
         # Read in all the migrations by name
         for filename in os.listdir(self.apps[app_label]):
             path = os.path.join(self.apps[app_label], filename)
-            if filename.endswith(".migration"):
+            if filename.endswith(".migration.py"):
                 # Alright, load it
-                name = filename[:-10]
+                name = filename[:-13]
                 migration = Migration(app_label, name)
                 migration.load(path)
                 self.migrations[app_label][name] = migration

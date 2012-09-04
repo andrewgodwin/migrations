@@ -1,6 +1,3 @@
-from .parser import MigrationParser
-
-
 class Migration(object):
     """
     Represents a migration file on disk.
@@ -13,11 +10,14 @@ class Migration(object):
         self.name = name
 
     def load(self, path):
-        "Reads the migration and parses it"
-        parser = MigrationParser(self.app_label, path)
-        parser.parse()
-        self.actions = parser.actions
-        self.dependencies = parser.dependencies
+        "Reads the migration into memory"
+        # We don't use import here as we don't require migration files
+        # to be on an importable path (they can be either Python or .sql files)
+        context = {}
+        execfile(path, context, context)
+        migration = context['Migration']
+        self.actions = [action.render(self.app_label) for action in migration.actions]
+        self.dependencies = migration.dependencies
 
     def __eq__(self, other):
         try:

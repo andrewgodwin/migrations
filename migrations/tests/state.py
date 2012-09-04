@@ -5,11 +5,11 @@ from ..state import ProjectState, ModelState
 
 class StateTests(unittest.TestCase):
     """
-    Tests the migration parser/dependency manager/planner
+    Tests the rendering of ModelStates into models
     """
 
     def test_render_simple(self):
-        "Tests rendering of a ModelState into a Model"
+        "Tests a simple model"
         project_state = ProjectState()
         model_state = ModelState(
             project_state = project_state,

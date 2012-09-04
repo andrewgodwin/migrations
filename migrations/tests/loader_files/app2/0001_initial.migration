@@ -1,3 +1,0 @@
-create model Book
-    field title django.db.models.fields.CharField(max_length=200)
-    field author django.db.models.fields.related.ForeignKey("app1.Author")

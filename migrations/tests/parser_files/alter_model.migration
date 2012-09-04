@@ -1,3 +1,0 @@
-alter model Author
-    create field slug django.db.models.fields.SlugField(db_index=True)
-    option verbose_name_plural "Book Authors"

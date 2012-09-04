@@ -1,14 +1,6 @@
 class Action(object):
     "Base class for actions"
 
-    # If this is True, the action only exists temporarily for parsing
-    # and is replaced by self.actions once parsing is complete.
-    context_only = False
-
-    def final_check(self):
-        "Entrypoint for a final sanity check for context-type actions"
-        pass
-
     def alter_state(self, project_state):
         "Mutates the project_state with the changes this Action represents"
         raise NotImplementedError()

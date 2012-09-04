@@ -7,7 +7,7 @@ from ..exceptions import AmbiguousMigration, NonexistentMigration, UnmigratedApp
 
 class LoaderTests(unittest.TestCase):
     """
-    Tests the migration parser/dependency manager/planner
+    Tests the migration dependency manager/planner
     """
 
     def get_test_loader(self):

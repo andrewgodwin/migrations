@@ -1,4 +1,0 @@
-depend app2 0001_initial
-
-alter model Author
-    create field yob django.db.models.fields.IntegerField()

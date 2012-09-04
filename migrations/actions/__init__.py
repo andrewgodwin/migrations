@@ -4,5 +4,5 @@ request, and are responsible for changing AppState / emitting database
 operations
 """
 
-from .models import CreateModel, DeleteModel, AlterModel, AlterModelOption, AlterModelBases
+from .models import CreateModel, DeleteModel, AlterModelOption, AlterModelBases
 from .fields import CreateField, DeleteField
